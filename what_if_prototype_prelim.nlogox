@@ -20,8 +20,12 @@ to setup
   set experiment-seed new-seed ; generate a random seed and store in experiment-seed
   random-seed experiment-seed ; start the random sequence with experiment-seed
   if network-type = "forum" [
-    create-users numusers [ initialize-users ]
-    create-strategists numstrategists [ initialize-strategists ]
+    create-users numusers [ 
+      initialize-users 
+    ]
+    create-strategists numstrategists [ 
+      initialize-strategists 
+    ]
     ; fully connected user network 
     ask users [
       ask other users with [who > [who] of myself] [
@@ -168,7 +172,9 @@ end
 
 to integrate-post [newpost]
   if random-float 1 < integration-probability (distance newpost / (max-pxcor + 0.5)) acceptance-latitude acceptance-sharpness [
-    if count my-infolinks >= memory [ask one-of my-infolinks [die] ]
+    if count my-infolinks >= memory [
+      ask one-of my-infolinks [die] 
+    ]
     create-infolink-with newpost
     setxy mean [xcor] of infolink-neighbors mean [ycor] of infolink-neighbors
   ]
@@ -206,17 +212,25 @@ end
 
 to-report integration-probability [dist lambda k]
   report lambda ^ k / (dist ^ k + lambda ^ k)
+end
+
+to-report mean-immigration-attitude
+  report ifelse-value any? users [ mean [xcor / 16] of users ] [ 0 ]
+end
+
+to-report mean-climate-attitude
+  report ifelse-value any? users [ mean [ycor / 16] of users ] [ 0 ]
 end]]></code>
   <widgets>
     <view x="590" wrappingAllowedX="false" y="43" frameRate="30.0" minPycor="-16" height="433" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="433" tickCounterLabel="ticks" maxPycor="16" updateMode="1" maxPxcor="16" minPxcor="-16"></view>
-    <slider x="12" step="1" y="37" max="1000" width="150" display="numusers" height="50" min="2" direction="Horizontal" default="364.0" variable="numusers"></slider>
+    <slider x="12" step="1" y="37" max="1000" width="150" display="numusers" height="50" min="2" direction="Horizontal" default="800.0" variable="numusers"></slider>
     <switch x="1110" y="41" height="40" on="true" variable="show-users" width="258" display="show-users"></switch>
     <switch x="1110" y="86" height="40" on="true" variable="show-posts" width="137" display="show-posts"></switch>
-    <switch x="1110" y="131" height="40" on="true" variable="show-infolinks" width="258" display="show-infolinks"></switch>
+    <switch x="1110" y="131" height="40" on="false" variable="show-infolinks" width="258" display="show-infolinks"></switch>
     <plot x="567" autoPlotX="true" yMax="1.0" autoPlotY="true" y="574" xMin="0.0" height="308" legend="true" xMax="10.0" yMin="0.0" width="452" display="spread measures users">
       <setup></setup>
       <update>set-plot-y-range 0 1</update>
-      <pen interval="1.0" mode="0" display="mean distance infobits" color="-13345367" legend="true">
+      <pen interval="1.0" mode="0" display="mean distance posts" color="-13345367" legend="true">
         <setup></setup>
         <update>plot mean [mean lput 0 [link-length] of infolinks] of users / (max-pxcor + 0.5)</update>
       </pen>
@@ -225,9 +239,8 @@ end]]></code>
     <switch x="1249" y="86" height="40" on="false" variable="post-size" width="118" display="post-size"></switch>
     <slider x="167" step="1" y="37" max="2" width="150" display="dims" height="50" min="1" direction="Horizontal" default="2.0" variable="dims"></slider>
     <monitor x="836" precision="3" y="711" height="60" fontSize="11" width="160" display="mean-distance infolinks">mean [mean lput 0 [link-length] of my-infolinks] of users / (max-pxcor + 0.5)</monitor>
-    <slider x="842" step="1" y="519" max="200" width="177" display="update-plot-every" height="50" min="1" direction="Horizontal" default="200.0" variable="update-plot-every"></slider>
-    <slider x="12" step="1" y="92" max="1000" width="150" display="numstrategists" height="50" min="0" direction="Horizontal" default="16.0" variable="numstrategists"></slider>
-    <slider x="168" step="1" y="92" max="1000" width="150" display="num-target-users" height="50" min="0" direction="Horizontal" default="40.0" variable="num-target-users"></slider>
+    <slider x="12" step="1" y="92" max="1000" width="150" display="numstrategists" height="50" min="0" direction="Horizontal" default="200.0" variable="numstrategists"></slider>
+    <slider x="168" step="1" y="92" max="1000" width="150" display="num-target-users" height="50" min="0" direction="Horizontal" default="20.0" variable="num-target-users"></slider>
     <plot x="335" autoPlotX="false" yMax="10.0" autoPlotY="false" y="40" xMin="0.0" height="175" legend="false" xMax="40.0" yMin="0.0" width="230" xAxis="posts" display="users' infolinks">
       <setup></setup>
       <update>set-plot-x-range 0 10.5 * ceiling (max (fput 1 [count my-infolinks] of users) / 10)
@@ -245,13 +258,13 @@ set-plot-y-range 0 count users / 5</update>
     <note x="705" y="480" backgroundDark="0" fontSize="12" width="224" markdown="false" height="23" textColorDark="-1" textColorLight="-16777216" backgroundLight="0"> attitude toward immigration (dim. 1)</note>
     <note x="590" y="481" backgroundDark="0" fontSize="12" width="27" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
     <note x="1026" y="201" backgroundDark="0" fontSize="12" width="64" markdown="false" height="95" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">att. toward climate change (dim. 2)</note>
-    <chooser x="11" y="147" height="60" variable="network-type" current="1" width="128" display="network-type">
+    <chooser x="11" y="147" height="60" variable="network-type" current="0" width="128" display="network-type">
       <choice type="string" value="forum"></choice>
       <choice type="string" value="scale-free"></choice>
     </chooser>
     <note x="732" y="12" backgroundDark="0" fontSize="18" width="150" markdown="false" height="64" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">attitude space</note>
     <switch x="1110" y="223" height="40" on="false" variable="show-user-links" width="260" display="show-user-links"></switch>
-    <switch x="1110" y="177" height="40" on="true" variable="show-strategist-links" width="259" display="show-strategist-links"></switch>
+    <switch x="1110" y="177" height="40" on="false" variable="show-strategist-links" width="259" display="show-strategist-links"></switch>
     <plot x="335" autoPlotX="true" yMax="10.0" autoPlotY="true" y="296" xMin="0.0" height="175" legend="false" xMax="300.0" yMin="0.0" width="230" xAxis="popularity" display="posts">
       <setup></setup>
       <update>set-plot-x-range 0 max (fput 1 [popularity] of posts)</update>
@@ -271,19 +284,16 @@ set-plot-y-range 0 0.1</update>
       </pen>
     </plot>
     <monitor x="460" precision="3" y="759" height="60" fontSize="11" width="100" display="fluctation">mean [fluctuation] of users</monitor>
-    <note x="619" y="518" backgroundDark="0" fontSize="18" width="152" markdown="false" height="53" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Output measures</note>
-    <input x="11" multiline="false" y="213" height="60" variable="time-steps" type="number" width="100">10000.0</input>
-    <slider x="10" step="0.01" y="667" max="1" width="150" display="fraction-inter" height="50" min="0" direction="Horizontal" default="0.2" variable="fraction-inter"></slider>
-    <slider x="10" step="1" y="610" max="20" width="150" display="numcentral" height="50" min="0" direction="Horizontal" default="1.0" variable="numcentral"></slider>
-    <chooser x="10" y="544" height="60" variable="new-posts-mode" current="2" width="239" display="new-posts-mode">
+    <input x="11" multiline="false" y="213" height="60" variable="time-steps" type="number" width="100">1000.0</input>
+    <chooser x="10" y="544" height="60" variable="new-posts-mode" current="0" width="239" display="new-posts-mode">
       <choice type="string" value="individual"></choice>
       <choice type="string" value="close posts"></choice>
       <choice type="string" value="distant posts"></choice>
     </chooser>
     <note x="5" y="353" backgroundDark="0" fontSize="12" width="168" markdown="false" height="18" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">Memory parameters</note>
-    <slider x="10" step="0.02" y="376" max="1" width="242" display="acceptance-latitude" height="50" min="0.02" direction="Horizontal" default="0.2" variable="acceptance-latitude"></slider>
+    <slider x="10" step="0.02" y="376" max="1" width="242" display="acceptance-latitude" height="50" min="0.02" direction="Horizontal" default="0.1" variable="acceptance-latitude"></slider>
     <slider x="10" step="0.2" y="431" max="20" width="242" display="acceptance-sharpness" height="50" min="0" direction="Horizontal" default="20.0" variable="acceptance-sharpness"></slider>
-    <slider x="9" step="1" y="486" max="40" width="243" display="memory" height="50" min="2" direction="Horizontal" default="10.0" variable="memory"></slider>
+    <slider x="9" step="1" y="486" max="40" width="243" display="memory" height="50" min="2" direction="Horizontal" default="20.0" variable="memory"></slider>
     <button x="91" y="281" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="63">go</button>
     <button x="11" y="281" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="73">setup</button>
     <note x="4" y="324" backgroundDark="0" fontSize="18" width="244" markdown="false" height="30" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Dynamic parameters (go)</note>
@@ -294,6 +304,8 @@ set-plot-y-range 0 0.1</update>
     </chooser>
     <slider x="1111" step="0.001" y="338" max="0.05" width="233" display="color-axis-max" height="50" min="0.001" direction="Horizontal" default="0.05" variable="color-axis-max"></slider>
     <note x="329" y="10" backgroundDark="0" fontSize="18" width="92" markdown="false" height="22" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Statistics</note>
+    <slider x="842" step="1" y="519" max="200" width="177" display="update-plot-every" height="50" min="1" direction="Horizontal" default="1.0" variable="update-plot-every"></slider>
+    <note x="568" y="524" backgroundDark="0" fontSize="18" width="168" markdown="false" height="35" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Output measures</note>
   </widgets>
   <info># WHAT-IF Model
 
