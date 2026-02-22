@@ -100,7 +100,7 @@ to go
   if ticks mod update-plot-every = 0 [
     update-plots
   ]
-  tick-advance 1
+  tick
   if ticks = time-steps [stop]
 end
 
@@ -215,75 +215,37 @@ to-report integration-probability [dist lambda k]
 end
 
 to-report mean-immigration-attitude
-  report ifelse-value any? users [ mean [xcor / 16] of users ] [ 0 ]
+  report mean [xcor / 16] of users
+end
+
+to-report sd-immigration-attitude
+  report standard-deviation [xcor / 16] of users
 end
 
 to-report mean-climate-attitude
-  report ifelse-value any? users [ mean [ycor / 16] of users ] [ 0 ]
+  report mean [ycor / 16] of users
+end
+
+to-report sd-climate-attitude
+  report standard-deviation [ycor / 16] of users
 end]]></code>
   <widgets>
-    <view x="590" wrappingAllowedX="false" y="43" frameRate="30.0" minPycor="-16" height="433" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="433" tickCounterLabel="ticks" maxPycor="16" updateMode="1" maxPxcor="16" minPxcor="-16"></view>
+    <view x="590" wrappingAllowedX="false" y="37" frameRate="30.0" minPycor="-16" height="433" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="433" tickCounterLabel="ticks" maxPycor="16" updateMode="1" maxPxcor="16" minPxcor="-16"></view>
     <slider x="12" step="1" y="37" max="1000" width="150" display="numusers" height="50" min="2" direction="Horizontal" default="800.0" variable="numusers"></slider>
     <switch x="1110" y="41" height="40" on="true" variable="show-users" width="258" display="show-users"></switch>
     <switch x="1110" y="86" height="40" on="true" variable="show-posts" width="137" display="show-posts"></switch>
     <switch x="1110" y="131" height="40" on="false" variable="show-infolinks" width="258" display="show-infolinks"></switch>
-    <plot x="567" autoPlotX="true" yMax="1.0" autoPlotY="true" y="574" xMin="0.0" height="308" legend="true" xMax="10.0" yMin="0.0" width="452" display="spread measures users">
-      <setup></setup>
-      <update>set-plot-y-range 0 1</update>
-      <pen interval="1.0" mode="0" display="mean distance posts" color="-13345367" legend="true">
-        <setup></setup>
-        <update>plot mean [mean lput 0 [link-length] of infolinks] of users / (max-pxcor + 0.5)</update>
-      </pen>
-    </plot>
-    <monitor x="461" precision="17" y="222" height="60" fontSize="11" width="100" display="# infolinks">count infolinks</monitor>
     <switch x="1249" y="86" height="40" on="false" variable="post-size" width="118" display="post-size"></switch>
     <slider x="167" step="1" y="37" max="2" width="150" display="dims" height="50" min="1" direction="Horizontal" default="2.0" variable="dims"></slider>
-    <monitor x="836" precision="3" y="711" height="60" fontSize="11" width="160" display="mean-distance infolinks">mean [mean lput 0 [link-length] of my-infolinks] of users / (max-pxcor + 0.5)</monitor>
     <slider x="12" step="1" y="92" max="1000" width="150" display="numstrategists" height="50" min="0" direction="Horizontal" default="200.0" variable="numstrategists"></slider>
     <slider x="168" step="1" y="92" max="1000" width="150" display="num-target-users" height="50" min="0" direction="Horizontal" default="20.0" variable="num-target-users"></slider>
-    <plot x="335" autoPlotX="false" yMax="10.0" autoPlotY="false" y="40" xMin="0.0" height="175" legend="false" xMax="40.0" yMin="0.0" width="230" xAxis="posts" display="users' infolinks">
-      <setup></setup>
-      <update>set-plot-x-range 0 10.5 * ceiling (max (fput 1 [count my-infolinks] of users) / 10)
-set-plot-y-range 0 count users / 5</update>
-      <pen interval="1.0" mode="1" display="default" color="-16777216" legend="true">
-        <setup></setup>
-        <update>histogram [count my-infolinks] of users</update>
-      </pen>
-    </plot>
-    <note x="13" y="6" backgroundDark="0" fontSize="18" width="197" markdown="false" height="25" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Setup parameters</note>
     <note x="1107" y="11" backgroundDark="0" fontSize="18" width="224" markdown="false" height="26" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Visualization parameters</note>
-    <note x="1026" y="41" backgroundDark="0" fontSize="12" width="33" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+1</note>
-    <note x="997" y="480" backgroundDark="0" fontSize="12" width="28" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+1</note>
-    <note x="1025" y="453" backgroundDark="0" fontSize="12" width="26" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
-    <note x="705" y="480" backgroundDark="0" fontSize="12" width="224" markdown="false" height="23" textColorDark="-1" textColorLight="-16777216" backgroundLight="0"> attitude toward immigration (dim. 1)</note>
-    <note x="590" y="481" backgroundDark="0" fontSize="12" width="27" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
-    <note x="1026" y="201" backgroundDark="0" fontSize="12" width="64" markdown="false" height="95" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">att. toward climate change (dim. 2)</note>
     <chooser x="11" y="147" height="60" variable="network-type" current="0" width="128" display="network-type">
       <choice type="string" value="forum"></choice>
       <choice type="string" value="scale-free"></choice>
     </chooser>
-    <note x="732" y="12" backgroundDark="0" fontSize="18" width="150" markdown="false" height="64" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">attitude space</note>
     <switch x="1110" y="223" height="40" on="false" variable="show-user-links" width="260" display="show-user-links"></switch>
     <switch x="1110" y="177" height="40" on="false" variable="show-strategist-links" width="259" display="show-strategist-links"></switch>
-    <plot x="335" autoPlotX="true" yMax="10.0" autoPlotY="true" y="296" xMin="0.0" height="175" legend="false" xMax="300.0" yMin="0.0" width="230" xAxis="popularity" display="posts">
-      <setup></setup>
-      <update>set-plot-x-range 0 max (fput 1 [popularity] of posts)</update>
-      <pen interval="1.0" mode="1" display="default" color="-16777216" legend="true">
-        <setup></setup>
-        <update>histogram [popularity] of posts</update>
-      </pen>
-    </plot>
-    <monitor x="334" precision="17" y="223" height="60" fontSize="11" width="100" display="# posts">count posts</monitor>
-    <plot x="331" autoPlotX="true" yMax="1.0" autoPlotY="true" y="575" xMin="0.0" height="175" legend="false" xMax="1.0" yMin="0.0" width="230" display="fluctuation">
-      <setup></setup>
-      <update>; set-plot-y-range 0 (ceiling 1.5 * max (fput 0.1 [fluctuation] of guys))
-set-plot-y-range 0 0.1</update>
-      <pen interval="1.0" mode="0" display="pen-1" color="-16777216" legend="true">
-        <setup></setup>
-        <update>plot mean [fluctuation] of users</update>
-      </pen>
-    </plot>
-    <monitor x="460" precision="3" y="759" height="60" fontSize="11" width="100" display="fluctation">mean [fluctuation] of users</monitor>
     <input x="11" multiline="false" y="213" height="60" variable="time-steps" type="number" width="100">1000.0</input>
     <chooser x="10" y="544" height="60" variable="new-posts-mode" current="0" width="239" display="new-posts-mode">
       <choice type="string" value="individual"></choice>
@@ -303,9 +265,105 @@ set-plot-y-range 0 0.1</update>
       <choice type="string" value="frequency users"></choice>
     </chooser>
     <slider x="1111" step="0.001" y="338" max="0.05" width="233" display="color-axis-max" height="50" min="0.001" direction="Horizontal" default="0.05" variable="color-axis-max"></slider>
-    <note x="329" y="10" backgroundDark="0" fontSize="18" width="92" markdown="false" height="22" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Statistics</note>
-    <slider x="842" step="1" y="519" max="200" width="177" display="update-plot-every" height="50" min="1" direction="Horizontal" default="1.0" variable="update-plot-every"></slider>
-    <note x="568" y="524" backgroundDark="0" fontSize="18" width="168" markdown="false" height="35" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Output measures</note>
+    <slider x="1112" step="1" y="395" max="200" width="177" display="update-plot-every" height="50" min="1" direction="Horizontal" default="1.0" variable="update-plot-every"></slider>
+    <note x="732" y="7" backgroundDark="0" fontSize="18" width="150" markdown="false" height="29" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">attitude space</note>
+    <note x="1025" y="36" backgroundDark="0" fontSize="12" width="33" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+1</note>
+    <note x="705" y="474" backgroundDark="0" fontSize="12" width="224" markdown="false" height="23" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">immigration attitude (dim. 1)</note>
+    <note x="587" y="472" backgroundDark="0" fontSize="12" width="27" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
+    <note x="997" y="472" backgroundDark="0" fontSize="12" width="28" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+1</note>
+    <note x="1024" y="448" backgroundDark="0" fontSize="12" width="26" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
+    <note x="1025" y="191" backgroundDark="0" fontSize="12" width="64" markdown="false" height="95" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">climate change attitude (dim. 2)</note>
+    <plot x="333" autoPlotX="false" yMax="20.0" autoPlotY="true" y="35" xMin="0.0" height="175" legend="false" xMax="40.0" yMin="0.0" width="230" xAxis="posts" display="users' infolinks">
+      <setup></setup>
+      <update>set-plot-x-range 0 10.5 * ceiling (max (fput 1 [count my-infolinks] of users) / 10)
+set-plot-y-range 0 count users / 2
+</update>
+      <pen interval="1.0" mode="1" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update>histogram [count my-infolinks] of users</update>
+      </pen>
+    </plot>
+    <monitor x="462" precision="17" y="215" height="60" fontSize="11" width="100" display="# infolinks">count infolinks</monitor>
+    <monitor x="334" precision="17" y="214" height="60" fontSize="11" width="100" display="# posts">count posts</monitor>
+    <note x="13" y="6" backgroundDark="0" fontSize="18" width="197" markdown="false" height="25" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Setup parameters</note>
+    <note x="332" y="6" backgroundDark="0" fontSize="18" width="92" markdown="false" height="24" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Statistics</note>
+    <monitor x="474" precision="3" y="458" height="60" fontSize="11" width="100" display="fluctation">mean [fluctuation] of users</monitor>
+    <monitor x="334" precision="3" y="458" height="60" fontSize="11" width="136" display="avg-distance infolinks">mean [mean lput 0 [link-length] of my-infolinks] of users / (max-pxcor + 0.5)</monitor>
+    <plot x="334" autoPlotX="true" yMax="10.0" autoPlotY="true" y="279" xMin="0.0" height="175" legend="false" xMax="300.0" yMin="0.0" width="230" xAxis="popularity" display="posts">
+      <setup></setup>
+      <update>set-plot-x-range 0 max (fput 1 [popularity] of posts)</update>
+      <pen interval="1.0" mode="1" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update>histogram [popularity] of posts</update>
+      </pen>
+    </plot>
+    <plot x="334" autoPlotX="true" yMax="1.0" autoPlotY="true" y="523" xMin="0.0" height="175" legend="false" xMax="1.0" yMin="0.0" width="252" display="fluctuation">
+      <setup></setup>
+      <update>; set-plot-y-range 0 (ceiling 1.5 * max (fput 0.1 [fluctuation] of guys))
+set-plot-y-range 0 0.1</update>
+      <pen interval="1.0" mode="0" display="pen-1" color="-16777216" legend="true">
+        <setup></setup>
+        <update>plot mean [fluctuation] of users</update>
+      </pen>
+    </plot>
+    <plot x="594" autoPlotX="true" yMax="1.0" autoPlotY="true" y="522" xMin="0.0" height="177" legend="true" xMax="10.0" yMin="0.0" width="232" display="spread measures users">
+      <setup></setup>
+      <update>set-plot-y-range 0 1</update>
+      <pen interval="1.0" mode="0" display="mean distance posts" color="-13345367" legend="true">
+        <setup></setup>
+        <update>plot mean [mean lput 0 [link-length] of infolinks] of users / (max-pxcor + 0.5)</update>
+      </pen>
+    </plot>
+    <plot x="1077" autoPlotX="false" yMax="1.0" autoPlotY="false" y="522" xMin="0.0" height="177" legend="false" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="climate change attitude">
+      <setup></setup>
+      <update>set-plot-y-range -1 1
+set-plot-x-range 0 time-steps</update>
+      <pen interval="1.0" mode="0" display="mean" color="-13345367" legend="true">
+        <setup></setup>
+        <update>plot mean-climate-attitude</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="min" color="-2674135" legend="true">
+        <setup></setup>
+        <update>plot min [xcor / 16] of users</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="max" color="-12087248" legend="true">
+        <setup></setup>
+        <update>plot max [xcor / 16] of users</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="sd-upper" color="-11033397" legend="true">
+        <setup></setup>
+        <update>plot mean-climate-attitude + sd-climate-attitude</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="sd-lower" color="-11033397" legend="true">
+        <setup></setup>
+        <update>plot mean-immigration-attitude - sd-climate-attitude</update>
+      </pen>
+    </plot>
+    <plot x="834" autoPlotX="false" yMax="1.0" autoPlotY="false" y="522" xMin="0.0" height="177" legend="false" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="immigration attitude">
+      <setup></setup>
+      <update>set-plot-y-range -1 1
+set-plot-x-range 0 time-steps</update>
+      <pen interval="1.0" mode="0" display="mean" color="-13345367" legend="true">
+        <setup></setup>
+        <update>plot mean-immigration-attitude</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="min" color="-2674135" legend="true">
+        <setup></setup>
+        <update>plot min [xcor / 16] of users</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="max" color="-12087248" legend="true">
+        <setup></setup>
+        <update>plot max [xcor / 16] of users</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="sd-upper" color="-8990512" legend="true">
+        <setup></setup>
+        <update>plot mean-immigration-attitude + sd-immigration-attitude</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="sd-lower" color="-8990512" legend="true">
+        <setup></setup>
+        <update>plot mean-immigration-attitude - sd-immigration-attitude</update>
+      </pen>
+    </plot>
   </widgets>
   <info># WHAT-IF Model
 
