@@ -324,11 +324,11 @@ set-plot-x-range 0 time-steps</update>
       </pen>
       <pen interval="1.0" mode="0" display="min" color="-2674135" legend="true">
         <setup></setup>
-        <update>plot min [xcor / 16] of users</update>
+        <update>plot min [ycor / 16] of users</update>
       </pen>
       <pen interval="1.0" mode="0" display="max" color="-12087248" legend="true">
         <setup></setup>
-        <update>plot max [xcor / 16] of users</update>
+        <update>plot max [ycor / 16] of users</update>
       </pen>
       <pen interval="1.0" mode="0" display="sd-upper" color="-11033397" legend="true">
         <setup></setup>
@@ -337,6 +337,10 @@ set-plot-x-range 0 time-steps</update>
       <pen interval="1.0" mode="0" display="sd-lower" color="-11033397" legend="true">
         <setup></setup>
         <update>plot mean-immigration-attitude - sd-climate-attitude</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="pen-5" color="-817084" legend="true">
+        <setup></setup>
+        <update>plot median [ycor / 16] of users</update>
       </pen>
     </plot>
     <plot x="834" autoPlotX="false" yMax="1.0" autoPlotY="false" y="522" xMin="0.0" height="177" legend="false" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="immigration attitude">
@@ -355,13 +359,17 @@ set-plot-x-range 0 time-steps</update>
         <setup></setup>
         <update>plot max [xcor / 16] of users</update>
       </pen>
-      <pen interval="1.0" mode="0" display="sd-upper" color="-8990512" legend="true">
+      <pen interval="1.0" mode="0" display="sd-upper" color="-11033397" legend="true">
         <setup></setup>
         <update>plot mean-immigration-attitude + sd-immigration-attitude</update>
       </pen>
-      <pen interval="1.0" mode="0" display="sd-lower" color="-8990512" legend="true">
+      <pen interval="1.0" mode="0" display="sd-lower" color="-11033397" legend="true">
         <setup></setup>
         <update>plot mean-immigration-attitude - sd-immigration-attitude</update>
+      </pen>
+      <pen interval="1.0" mode="0" display="median" color="-817084" legend="true">
+        <setup></setup>
+        <update>plot median [xcor / 16] of users</update>
       </pen>
     </plot>
   </widgets>
