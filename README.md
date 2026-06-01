@@ -18,6 +18,7 @@ These micro-level interactions generate macro-level dynamics such as attitude ch
 Requirements
 ------------
 NetLogo 7.0.3 or later
+
 Download from: https://ccl.northwestern.edu/netlogo/download.shtml
 
 
