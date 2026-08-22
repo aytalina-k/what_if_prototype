@@ -26,8 +26,8 @@ Running the model
 -----------------
 1. Install NetLogo (see link above).
 2. Open NetLogo.
-3. Go to File > Open and select what_if_prototype_prelim.nlogox.
-4. Click 'Setup' to initialise the model
+3. Go to File > Open and select what_if_prototype_baseline.nlogox or what_if_prototype_theoretical.nlogox.
+4. Click 'Setup' to initialize the model
 5. Click 'Go' to run the simulation
 
 Detailed documentation of the model design, assumptions, and parameters is provided in the model’s Info tab (NetLogo interface).
