@@ -1,321 +1,378 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.3" snapToGrid="false">
-  <code><![CDATA[extensions [nw]
-globals [experiment-seed]
-breed [users user]
-breed [posts post]
-breed [strategists strategist]
-undirected-link-breed [user-links user-link] ; links between users
-undirected-link-breed [infolinks infolink] ; links between agents and information
-directed-link-breed [strategist-links strategist-link]  ; directed links from strategists to users
+  <code><![CDATA[extensions [nw] ; loads Networks extension used to generate the preferntial-attachment network in the microblog condition
+globals [experiment-seed] ; creates a global variable storing the random seed used for simulations
+breed [users user] ; defines the type of agents representing members of the public or ordinary users
+breed [strategists strategist] ; defines the type of agents representing committed actors
+breed [posts post] ; defines the type of agents representing social media political content 
+undirected-link-breed [user-links user-link] ; defines undirected links between users representing exposure channels
+undirected-link-breed [infolinks infolink] ; defines undirected links between agents and posts representing posts in memory
+directed-link-breed [strategist-links strategist-link]  ; defines directed links from strategists to users representing influence
 
-users-own [fluctuation oldxcor oldycor activity civility] ; fluctuation measures how much each user has moved 
-strategists-own [oldxcor oldycor activity civility]
-posts-own [civility quality popularity post-age]
-user-links-own [weight]
-infolinks-own [age]
-strategist-links-own [weight]
+users-own [fluctuation oldxcor oldycor activity civility] 
+; fluctuation measures how much each user has moved during the current timestep
+; oldxcor oldycor store previous position used to calculate movement
+; activity is posting probability and civility characterizes user's civility level
+strategists-own [oldxcor oldycor activity civility trustworthiness]
+; committed actors maintain their position and do not fluctuate 
+; trustworthiness characterizes the credibility of committed actors and affects content quality
+posts-own [civility quality popularity post-age] ; civility is influenced by the post creator's civility
+; quality is influenced by trustworthiness if posted by a strategist
+; popularity is influenced by how many agents store the post in their memory and affects the visibility of the post
+; post-age is the time since the post was published and affects its visibility 
+user-links-own [weight] ; characterizes exposure probability based on the activity of user nodes
+infolinks-own [age] ; records how long an agent has retained a particular post in memory
+strategist-links-own [weight] ; characterizes exposure probability based on the activity of user nodes
 
-;===========================================================================================================
+;=============================================================================================================================================
 
 to setup
-  clear-all
-  set experiment-seed new-seed ; generate a random seed and store in experiment-seed
-  random-seed experiment-seed ; start the random sequence with experiment-seed
-  if network-type = "forum" [
-    create-users numusers [ initialize-users ]
-    create-strategists numstrategists [ initialize-strategists ]
-    ask users [
-      ask other users with [who > [who] of myself] [
-        create-user-link-with myself ; fully connected user network 
+  clear-all ; resets the entire simulation
+  set experiment-seed new-seed ; generates a random seed and stores in experiment-seed
+  random-seed experiment-seed ; starts the random sequence with experiment-seed
+  if network-type = "forum" [ ; if the interface specifies the forum condition
+    create-users numusers [ initialize-users ] ; creates and initializes the specified number of users
+    create-strategists numstrategists [ initialize-strategists ] ; creates and initializes the specified number of committed actors
+    ask users [ ; starts creating a fully connected user network
+      ask other users with [who > [who] of myself] [ ; prevents creating the same undirected link twice
+        create-user-link-with myself ; creates a link between every pair of users
       ]
     ]
-    ask strategists [
-      let targets n-of num-target-users users
+    ask user-links [ ; assigns weights to the links depending on user activity
+      set weight ([activity] of end1) * ([activity] of end2)
+    ]
+    ask strategists [ ; starts targeting ordinary users
+      let targets n-of num-target-users users ; randomly selects a specified number of users as targets
       ask targets [
-        create-strategist-link-from myself ; link strategists to random users via directed links
+        create-strategist-link-from myself ; connects strategists to random users via directed links
       ]
+    ]
+    ask strategist-links [ ; assigns weights to the links depending on agents' activity
+      set weight ([activity] of end1) * ([activity] of end2)
     ]
   ]
-  if network-type = "microblog" [
-    create-strategists numstrategists [ initialize-strategists ]
-    let m 10 ; m is the number of links each added node tries to make
-    if m >= numusers [ set m max list 1 (numusers - 1) ]
-    nw:set-context users user-links
-    nw:generate-preferential-attachment users user-links numusers m ; build a preferential-attachment user network (undirected)
-    ask users [ initialize-users ]
-    ask strategists [
-      let targets n-of num-target-users users
-      ask targets [
-        create-strategist-link-from myself ; connect strategists to random users via directed links
-      ]
+  if network-type = "microblog" [ ; if the interface specifies the microblog condition
+    create-strategists numstrategists [ initialize-strategists ]  ; creates and initializes the specified number of committed actors
+    let m 10 ; m is the minimun number of links each added node tries to make
+    if m >= numusers [ set m max list 1 (numusers - 1) ] ; prevents m from exceeding the number of available users
+    nw:set-context users user-links ; tells the Networks extension that the users and user-links constitute the relevant network
+    nw:generate-preferential-attachment users user-links numusers m ; builds a preferential-attachment user network
+    ; new users are more likely to connect to users who already have many connections
+    ask users [ initialize-users ] ; initializes users
+    ask user-links [  ; assigns weights to the links depending on user activity
+      set weight ([activity] of end1) * ([activity] of end2)
     ]
+    ask strategists [ ; starts targeting ordinary users
+      let targets n-of num-target-users users ; randomly selects a specified number of users as targets
+      ask targets [
+        create-strategist-link-from myself ; connects strategists to random users via directed links
+        ]
+      ]
+    ask strategist-links [ ; assigns weights to the links depending on agents' activity
+      set weight ([activity] of end1) * ([activity] of end2)
+      ]
   ]
-  visualize
+  new-posts
+  visualize 
   reset-ticks
 end
 
 to initialize-users
-  set shape "person"
-  let sd-x max-pxcor / 2
-  let sd-y max-pycor / 2
-  setxy
-    (max list (- max-pxcor) (min list max-pxcor (random-normal 0 sd-x)))
+  set shape "person" ; displays users as people
+  let sd-x max-pxcor / 2 ; sets the standard deviations of the initial x-position distributions to half the corresponding world dimension
+  let sd-y max-pycor / 2 ; sets the standard deviations of the initial y-position distributions to half the corresponding world dimension
+  setxy ; draws each attitude dimension from a normal distribution centred on 0 and truncates the resulting position to the world boundaries 
+    (max list (- max-pxcor) (min list max-pxcor (random-normal 0 sd-x))) 
     (max list (- max-pycor) (min list max-pycor (random-normal 0 sd-y)))
-  set oldxcor xcor
-  set oldycor ycor
-  set fluctuation 0
-  ifelse random-float 1 < 0.1 ; 10% probability that a random number is below 0.1
-  [ set activity random-normal 0.8 0.1 ] ; high-activity users
-  [ set activity random-normal 0.02 0.01 ] ; low-activity users
-  set activity max list 0 (min list 1 activity) ; to ensure activity stays between 0 and 1
+  set oldxcor xcor ; stores the initial position
+  set oldycor ycor ; stores the initial position
+  set fluctuation 0 ; initializes the movement measure
+  ifelse random-float 1 < 0.1 ; randomly assigns approximately 10% of users to the high-activity group
+  [ set activity random-normal 0.8 0.1 ] ; high-activity users receive a posting probability centred around 0.8
+  [ set activity random-normal 0.02 0.01 ] ; low-activity users receive a much lower posting probability
+  set activity max list 0 (min list 1 activity) ; ensures activity stays between 0 and 1
+  set civility min list 1 (max list -1 (random-normal 0 0.4)) ; most receive a moderate civility value, with few extreme cases
 end
 
-to initialize-strategists
+to initialize-strategists 
   set shape "triangle"
   set color gray - 2
-  let ax (2 * random-float 1) - 1 ; ax ~ U[-1, 1]
-  let ay (2 * random-float 1) - 1 ; ay ~ U[-1, 1] 
-  set oldxcor ax
+  let ax (2 * random-float 1) - 1 ; ax ~ U[-1, 1] places strategists uniformly across the normalized two-dimensional attitude space
+  let ay (2 * random-float 1) - 1 ; ay ~ U[-1, 1] places strategists uniformly across the normalized two-dimensional attitude space
+  set oldxcor ax 
   set oldycor ay
-  setxy (ax * max-pxcor) (ay * max-pycor)
-  set activity max list 0 (min list 1 (random-normal 0.8 0.1)); strategists have high activity
-  set civility (random-float 2) - 1
+  setxy (ax * max-pxcor) (ay * max-pycor) ; converts the normalized coordinates into actual NetLogo world coordinates
+  ; thus committed actors can be moderate or extreme: being a committed actor does not itself imply ideological extremity
+  set activity min list 1 (max list 0 (random-normal 0.8 0.1)); gives committed actors high but heterogeneous posting probabilities
+  set civility min list 1 (max list -1 (random-normal 0 0.4)) ; most receive a moderate civility value, with few extreme cases
+  set trustworthiness random-float 1 ; randomly assigns each strategist a credibility value between 0 and 1
 end
 
-;===========================================================================================================
+;=============================================================================================================================================
 
 to go
-  age-infolinks
-  age-posts
-  new-posts
-  ask strategists [ strategic-push ]
-  ask users [ push-post ]
-  update-posts
-  visualize
-  if ticks mod update-plot-every = 0 [
-    update-plots
-  ]
-  tick
-  if ticks = time-steps [stop]
+  age-infolinks ; memory links become one timestep older
+  age-posts ; posts become one timestep older
+  new-posts ; agents integrate and generate new content according to the current new-posts-mode (set in the interface)
+  ask strategists [ strategic-push ] ; strategists publish/repost one post to their targeted users
+  ask users [ push-post ] ; users publish/repost one post through exposure network 
+  update-posts ; updates popularity and removes posts that are no longer visible
+  visualize ; updates the graphical representation 
+  if ticks mod update-plot-every = 0 [ update-plots ] ; updates plots at the specified in the interface interval
+  tick ; advances simulation time by one timestep
+  if ticks = time-steps [stop] ; stops the simulation after the specified in the interface number of timesteps
 end
 
 to new-posts
-  ask users [ set oldxcor xcor set oldycor ycor ]
-  if new-posts-mode = "individual" [
+  ask users [ set oldxcor xcor set oldycor ycor ] ; stores each user's current position before any content integration can move them
+  ask strategists [
+    if random-float 1 < activity [ ; a strategist posts if a random draw falls below their activity value
+      let creator self ; explicate who creator is to use in initialize-post submodel
+      hatch-posts 1 [
+        initialize-post creator ; creates and initializes the new post
+    ]
+  ]
+]
+  ; users: either individual posting or close/distant selection 
+  ifelse new-posts-mode = "individual" [ ; first tries to integrate a neighbor’s post; then (independently) maybe posts
     ask users [
-      if random-float 1 < activity [
-        let creator self
+      let candidates turtle-set [infolink-neighbors] of user-link-neighbors ; gathers posts remembered by any linked neighbor
+      set candidates candidates with [ not infolink-neighbor? myself ] ; excludes posts already in memory
+      if any? candidates [ integrate-post one-of candidates ] ; if any unseen neighbor post exists, integrates one at random
+      if random-float 1 < activity [  ; independently, decides to create a new post based on activity
+        let creator self ; explicate who creator is to use in initialize-post submodel
         hatch-posts 1 [
-          initialize-post creator
+          initialize-post creator ; creates and initialized the new post
         ]
       ]
     ]
-  ]
-  ask strategists [
-      if random-float 1 < activity [
-        let creator self
-        hatch-posts 1 [
-          initialize-post creator
-    ]
-  ]
-]
+  ] [
   if new-posts-mode = "close posts" or new-posts-mode = "distant posts" [
-      ask strategists [
-        if random-float 1 < activity [
-          let creator self
-          hatch-posts 1 [
-            initialize-post creator
-    ]
-  ]
-]
     ask users [
-      let fitting-posts ifelse-value (new-posts-mode = "close posts")[
+      let fitting-posts ifelse-value (new-posts-mode = "close posts")[ 
+        ; creates a set of existing posts that fit the selected exposure condition
         posts with [
           distance myself / (max-pxcor + 0.5) < acceptance-latitude and not infolink-neighbor? myself
+          ; selects posts relatively close to the user's current attitude, excludes posts the user already has in memory
         ]
       ][ posts with [
           distance myself / (max-pxcor + 0.5) >= acceptance-latitude and not infolink-neighbor? myself
+          ; selects posts beyond the threshold, excludes posts the user already has in memory
         ]
       ]
       ifelse (fitting-posts = no-turtles) or (count posts < numusers) [
-        let creator self
-        hatch-posts 1 [
-          initialize-post creator
+          ; if no suitable post exists, or there are fewer posts than users, the user creates a new post
+          if random-float 1 < activity [ 
+            let creator self
+            hatch-posts 1 [
+              initialize-post creator ; creates and initializes the new post
+            ]
+          ]
         ]
-      ] 
-      [ integrate-post one-of fitting-posts ]
+      [ integrate-post one-of fitting-posts ] ; otherwise attempts to integrate one randomly selected fitting post
+      ]
     ]
   ]
 end
 
 to initialize-post [creator]
-  set shape "dot"
-  set color gray
-  set quality (random-float 2) - 1
-  set civility
-  max list -1
-       (min (list 1
-                  ([civility] of myself +
-                   (((random-float 2) - 1) * 0.1))) ; 0.1 for now adds a tiny variation
-    )
-  set popularity 0
-  set post-age 0
-  ; Generate content around the producer's current attitudinal position
-  let new-x ([xcor] of myself) + random-normal 0 content-noise
-  let new-y ([ycor] of myself) + random-normal 0 content-noise
-  ; Keep the post within the bounded attitude space
-  set new-x max list (- max-pxcor) (min list max-pxcor new-x)
-  set new-y max list (- max-pycor) (min list max-pycor new-y)
-  setxy new-x new-y
-  create-infolink-with creator [
+  set shape "dot" ; visual shape
+  set color violet ; visual color
+  set civility max list -1 min list 1 ([civility] of creator + (((random-float 2) - 1) * 0.1)) ; 0.1 adds a tiny variation
+  ; makes the post's civility approximately equal to the creator's civility, with a small random deviation, clamps to [-1, 1]
+  ifelse ([breed] of creator = users) [ ; posts created by users get random quality 
+    set quality (random-float 1) ; assigns content quality uniformly in [0, 1]
+  ][
+    let t [trustworthiness] of creator ; posts created by committed actors get quality depending on their trustworthiness
+    set quality (random-float 1) ^ (1 + 0.5 * (1 - 2 * t)) ; t=0 → 1.5, t=0.5 → 1, t=1 → 0.5
+    ; assigns quality tilted by trustworthiness (low t → lower, high t → higher).
+  ]
+  set popularity 0 ; new posts begin with zero popularity
+  set post-age 0 ; new posts begin with zero age
+  let new-x ([xcor] of creator) + random-normal 0 content-noise
+  let new-y ([ycor] of creator) + random-normal 0 content-noise
+  ; generates content close to the creator's current attitudinal position, with normally distributed noise (set in interface)
+  setxy (max list (- max-pxcor) (min list max-pxcor new-x))
+        (max list (- max-pycor) (min list max-pycor new-y))
+  ; places the post at that position and keeps the post within the bounded attitude space
+  create-infolink-with creator [ ; the creator automatically retains their own post in memory
     set age 0
   ]
 end
 
 to push-post
-  if network-type = "microblog" [
-    if any? infolink-neighbors and random-float 1 < activity [
-      let postedinfo one-of infolink-neighbors
-      ask user-link-neighbors [ integrate-post postedinfo ] 
+  if any? infolink-neighbors and random-float 1 < activity [ ; if the user has at least one post in memory
+  ; and their activity is higher than a randomly generated number in [0, 1]
+    let postedinfo one-of infolink-neighbors ; they randomly select one remembered post
+    if network-type = "microblog" [
+      ask user-link-neighbors [ 
+        if random-float 1 < [ weight ] of link-with myself [ integrate-post postedinfo ] 
+        ; attempt to pass that post to all connected users depending on link weight
+      ]
     ]
-  ]
-  if network-type = "forum" [
-    if any? infolink-neighbors and random-float 1 < activity [
-      let postedinfo one-of infolink-neighbors
-      let candidates users in-radius 6 with [ self != myself ]
-      if any? candidates [
-        let n random (count candidates + 1)
-        if n > 0 [
-          ask n-of n candidates [ integrate-post postedinfo ]
+    if network-type = "forum" [
+      let candidates user-link-neighbors in-radius 6 ; attempt to pass that post to connected users nearby
+      let n random (count candidates + 1)
+      if n > 0 [
+        ask n-of n candidates [ 
+          if random-float 1 < [ weight ] of link-with myself [ ; passes the post to each nearby user based on link weight
+            integrate-post postedinfo 
+          ] 
         ]
       ]
     ]
   ]
 end
 
-
 to strategic-push
-   if any? infolink-neighbors and random-float 1 < activity [     
-    let postedinfo one-of infolink-neighbors     
-    ask out-strategist-link-neighbors [ integrate-post postedinfo ] 
-  ] 
+   if any? infolink-neighbors and random-float 1 < activity [ ; if the committed actor has at least one post in memory
+    ; and their activity is higher than a randomly generated number in [0, 1]
+    let postedinfo one-of infolink-neighbors ; committed actors randomly select one remembered post    
+    ask my-out-strategist-links [
+      let exposure-probability weight
+      if boost-quality-sources? and [trustworthiness] of end1 > 0.6 [
+        set exposure-probability min list 1 (exposure-probability * 1.5)
+      ]
+      if random-float 1 < exposure-probability [
+        ask end2 [
+          integrate-post postedinfo
+        ]
+      ]
+    ]
+  ]
 end
 
 to integrate-post [newpost]
-  if infolink-neighbor? newpost [ stop ]
+  if infolink-neighbor? newpost [ stop ] ; if the user already remembers the post, nothing happens
   if random-float 1 < integration-probability (distance newpost / (max-pxcor + 0.5)) acceptance-latitude acceptance-sharpness [
-    if count my-infolinks >= memory [
-      ask max-one-of my-infolinks [age] [die] 
+    ; the user probabilistically accepts the content
+    if count my-infolinks >= memory [ ; if the user's memory is full
+      ask max-one-of my-infolinks [age] [die] ; a post with an oldest memory link is removed from memory 
     ]
-    create-infolink-with newpost [
-      set age 0
+    create-infolink-with newpost [ ; the newly accepted post enters memory
+      set age 0 ; the new memory link gets age 0 
     ]
     setxy mean [xcor] of infolink-neighbors mean [ycor] of infolink-neighbors
+    ; the user moves to the mean position of all content currently in their memory in the attitude space
   ]
 end
 
 to update-posts
   ask posts [
-    ifelse any? infolink-neighbors [
-      set popularity count infolink-neighbors
-      ifelse post-size [set size sqrt popularity] [set  size 1]
+    ifelse any? infolink-neighbors [ ; if at least one agent remembers the post
+      set popularity count infolink-neighbors ; popularity is the number of agents currently holding the post in memory
+      ifelse post-size [set size sqrt popularity] [set  size 1] ; popularity can be visualized in the interface
     ] [
-      die
+      die ; if no one remembers the post it disappears
     ]
   ]
-  ask posts with [post-age > 24 and popularity = 0] [
+  ask posts with [post-age > 24 and popularity = 0] [ 
+  ; also removes posts older than 24 timesteps that have never gained popularity
     die
   ]
 end
 
-to age-infolinks
-  ask infolinks [
-    set age age + 1
+to age-infolinks ; every memory relationship becomes one timestep older
+  ask infolinks [ 
+    set age age + 1 ; age refers to how long a particular agent has retained a particular post
   ]
 end
 
 to age-posts
   ask posts [
-    set post-age post-age + 1
+    set post-age post-age + 1 ; separately, each post accumulates its own age
   ]
 end
 
 to visualize
-  ask users [ set fluctuation distancexy oldxcor oldycor / (max-pxcor + 0.5)]
+  ask users [ set fluctuation distancexy oldxcor oldycor / (max-pxcor + 0.5)] ; calculates how far each user moved during the timestep
+  ; the switches in the interface determine whether users, posts, and the different link types are displayed
   ifelse show-users [ask users [show-turtle]] [ask users [hide-turtle]]
+  ifelse show-strategists [ask strategists [show-turtle]] [ask strategists [hide-turtle]] 
   ifelse show-posts [ask posts [show-turtle]] [ask posts [hide-turtle]]
   ifelse show-infolinks [ask infolinks [show-link]] [ask infolinks [hide-link]]
   ifelse show-user-links [ask user-links [show-link]] [ask user-links [hide-link]]
   ifelse show-strategist-links [ask strategist-links [show-link]] [ask strategist-links [hide-link]]
   ifelse patch-color = "white" or count posts = 0 [
     ask patches [set pcolor white]
-  ][
-    if patch-color = "frequency posts" and count posts > 0 [ask patches [set pcolor scale-color gray (count posts-here / count posts) color-axis-max 0]]
+  ][ ; the patch-color section optionally displays the spatial concentration of posts or users
+    if patch-color = "frequency posts" and count posts > 0 [ask patches [set pcolor scale-color pink (count posts-here / count posts) color-axis-max 0]]
     if patch-color = "frequency users" [ask patches [set pcolor scale-color yellow (count users-here / count users) color-axis-max 0]]
   ]
 end
 
-to-report integration-probability [dist lambda k]
-  report lambda ^ k / (dist ^ k + lambda ^ k)
+;=============================================================================================================================================
+
+to-report integration-probability [dist lambda k] ; produces a probability that declines as attitudinal distance increases
+  report lambda ^ k / (dist ^ k + lambda ^ k) ; so more distant content is less likely to be integrated
 end
 
-to-report mean-immigration-attitude
+to-report mean-immigration-attitude ; calculates the average x-position of users, interpreted as their mean immigration attitude
   report mean [xcor / 16] of users
 end
 
-to-report sd-immigration-attitude
+to-report mean-immigration-opinion ; calculates the average x-position of posts, interpreted as their mean immigration attitude
+  report mean [xcor / 16] of posts
+end
+
+to-report sd-immigration-attitude ; calculates standard deviation
   report standard-deviation [xcor / 16] of users
 end
 
-to-report mean-climate-attitude
+to-report sd-immigration-opinion ; calculates standard deviation
+  report standard-deviation [xcor / 16] of posts
+end
+
+to-report mean-climate-attitude ; calculates the average y-position of users, interpreted as their mean climate change attitude
   report mean [ycor / 16] of users
 end
 
-to-report sd-climate-attitude
+to-report mean-climate-opinion ; calculates the average y-position of posts, interpreted as their mean climate change attitude
+  report mean [ycor / 16] of posts
+end
+
+to-report sd-climate-attitude ; calculates standard deviation
   report standard-deviation [ycor / 16] of users
+end
+
+to-report sd-climate-opinion ; calculates standard deviation
+  report standard-deviation [ycor / 16] of posts
+end
+
+to-report mean-post-quality
+  report mean [quality] of posts
+end
+
+to-report sd-post-quality
+  report standard-deviation [quality] of posts
+end
+
+to-report mean-post-civility
+  report mean [civility] of posts
+end
+
+to-report sd-post-civility
+  report standard-deviation [civility] of posts
 end]]></code>
   <widgets>
     <view x="590" wrappingAllowedX="false" y="37" frameRate="30.0" minPycor="-16" height="433" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="433" tickCounterLabel="ticks" maxPycor="16" updateMode="1" maxPxcor="16" minPxcor="-16"></view>
-    <slider x="12" step="1" y="37" max="1000" width="150" display="numusers" height="50" min="2" direction="Horizontal" default="348.0" variable="numusers"></slider>
-    <switch x="1110" y="41" height="40" on="true" variable="show-users" width="258" display="show-users"></switch>
-    <switch x="1110" y="86" height="40" on="true" variable="show-posts" width="137" display="show-posts"></switch>
-    <switch x="1110" y="131" height="40" on="true" variable="show-infolinks" width="258" display="show-infolinks"></switch>
-    <switch x="1249" y="86" height="40" on="false" variable="post-size" width="118" display="post-size"></switch>
+    <slider x="12" step="1" y="37" max="1000" width="150" display="numusers" height="50" min="2" direction="Horizontal" default="1000.0" variable="numusers"></slider>
     <slider x="12" step="1" y="92" max="1000" width="150" display="numstrategists" height="50" min="0" direction="Horizontal" default="20.0" variable="numstrategists"></slider>
     <note x="1107" y="11" backgroundDark="0" fontSize="18" width="224" markdown="false" height="26" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Visualization parameters</note>
-    <chooser x="11" y="147" height="60" variable="network-type" current="1" width="128" display="network-type">
-      <choice type="string" value="forum"></choice>
-      <choice type="string" value="microblog"></choice>
-    </chooser>
-    <switch x="1110" y="223" height="40" on="false" variable="show-user-links" width="260" display="show-user-links"></switch>
-    <switch x="1110" y="177" height="40" on="true" variable="show-strategist-links" width="259" display="show-strategist-links"></switch>
-    <input x="11" multiline="false" y="213" height="60" variable="time-steps" type="number" width="100">1000.0</input>
-    <chooser x="10" y="544" height="60" variable="new-posts-mode" current="2" width="239" display="new-posts-mode">
+    <chooser x="10" y="544" height="60" variable="new-posts-mode" current="0" width="239" display="new-posts-mode">
       <choice type="string" value="individual"></choice>
       <choice type="string" value="close posts"></choice>
       <choice type="string" value="distant posts"></choice>
     </chooser>
     <note x="5" y="353" backgroundDark="0" fontSize="12" width="168" markdown="false" height="18" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">Memory parameters</note>
-    <slider x="10" step="0.02" y="376" max="1" width="242" display="acceptance-latitude" height="50" min="0.02" direction="Horizontal" default="0.1" variable="acceptance-latitude"></slider>
+    <slider x="10" step="0.02" y="376" max="1" width="242" display="acceptance-latitude" height="50" min="0.02" direction="Horizontal" default="0.2" variable="acceptance-latitude"></slider>
     <slider x="10" step="0.2" y="431" max="20" width="242" display="acceptance-sharpness" height="50" min="0" direction="Horizontal" default="20.0" variable="acceptance-sharpness"></slider>
-    <slider x="9" step="1" y="486" max="40" width="243" display="memory" height="50" min="2" direction="Horizontal" default="15.0" variable="memory"></slider>
+    <slider x="9" step="1" y="486" max="40" width="243" display="memory" height="50" min="2" direction="Horizontal" default="20.0" variable="memory"></slider>
     <button x="91" y="281" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="63">go</button>
     <button x="11" y="281" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="73">setup</button>
     <note x="4" y="324" backgroundDark="0" fontSize="18" width="244" markdown="false" height="30" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">Dynamic parameters (go)</note>
-    <chooser x="1110" y="270" height="60" variable="patch-color" current="0" width="262" display="patch-color">
-      <choice type="string" value="white"></choice>
-      <choice type="string" value="frequency infobits"></choice>
-      <choice type="string" value="frequency users"></choice>
-    </chooser>
-    <slider x="1111" step="0.001" y="338" max="0.05" width="233" display="color-axis-max" height="50" min="0.001" direction="Horizontal" default="0.05" variable="color-axis-max"></slider>
-    <slider x="1112" step="1" y="395" max="200" width="177" display="update-plot-every" height="50" min="1" direction="Horizontal" default="1.0" variable="update-plot-every"></slider>
     <note x="732" y="7" backgroundDark="0" fontSize="18" width="150" markdown="false" height="29" textColorDark="-1" textColorLight="-5298144" backgroundLight="0">attitude space</note>
-    <note x="1025" y="36" backgroundDark="0" fontSize="12" width="33" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+1</note>
     <note x="705" y="474" backgroundDark="0" fontSize="12" width="224" markdown="false" height="23" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">immigration attitude (dim. 1)</note>
-    <note x="587" y="472" backgroundDark="0" fontSize="12" width="27" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
-    <note x="997" y="472" backgroundDark="0" fontSize="12" width="28" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+1</note>
-    <note x="1024" y="448" backgroundDark="0" fontSize="12" width="26" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-1</note>
     <note x="1025" y="191" backgroundDark="0" fontSize="12" width="64" markdown="false" height="95" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">climate change attitude (dim. 2)</note>
     <plot x="333" autoPlotX="false" yMax="20.0" autoPlotY="true" y="35" xMin="0.0" height="175" legend="false" xMax="40.0" yMin="0.0" width="230" xAxis="posts" display="users' infolinks">
       <setup></setup>
@@ -358,66 +415,90 @@ set-plot-y-range 0 0.1</update>
         <update>plot mean [mean lput 0 [link-length] of infolinks] of users / (max-pxcor + 0.5)</update>
       </pen>
     </plot>
-    <plot x="1077" autoPlotX="false" yMax="1.0" autoPlotY="false" y="522" xMin="0.0" height="177" legend="false" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="climate change attitude">
+    <plot x="1077" autoPlotX="true" yMax="1.0" autoPlotY="true" y="522" xMin="0.0" height="177" legend="true" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="climate change opinion">
       <setup></setup>
       <update>set-plot-y-range -1 1
-set-plot-x-range 0 time-steps</update>
+set-plot-x-range 1 time-steps</update>
       <pen interval="1.0" mode="0" display="mean" color="-13345367" legend="true">
         <setup></setup>
-        <update>plot mean-climate-attitude</update>
+        <update>plot mean-climate-opinion</update>
       </pen>
       <pen interval="1.0" mode="0" display="min" color="-2674135" legend="true">
         <setup></setup>
-        <update>plot min [ycor / 16] of users</update>
+        <update>plot min [ycor / 16] of posts</update>
       </pen>
       <pen interval="1.0" mode="0" display="max" color="-12087248" legend="true">
         <setup></setup>
-        <update>plot max [ycor / 16] of users</update>
+        <update>plot max [ycor / 16] of posts</update>
       </pen>
       <pen interval="1.0" mode="0" display="sd-upper" color="-11033397" legend="true">
         <setup></setup>
-        <update>plot mean-climate-attitude + sd-climate-attitude</update>
+        <update>plot mean-climate-opinion + sd-climate-opinion</update>
       </pen>
       <pen interval="1.0" mode="0" display="sd-lower" color="-11033397" legend="true">
         <setup></setup>
-        <update>plot mean-immigration-attitude - sd-climate-attitude</update>
+        <update>plot mean-immigration-opinion - sd-climate-opinion</update>
       </pen>
       <pen interval="1.0" mode="0" display="pen-5" color="-817084" legend="true">
         <setup></setup>
-        <update>plot median [ycor / 16] of users</update>
+        <update>plot median [ycor / 16] of posts</update>
       </pen>
     </plot>
-    <plot x="834" autoPlotX="false" yMax="1.0" autoPlotY="false" y="522" xMin="0.0" height="177" legend="false" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="immigration attitude">
+    <plot x="834" autoPlotX="true" yMax="1.0" autoPlotY="true" y="522" xMin="0.0" height="177" legend="true" xMax="1000.0" yMin="-1.0" width="235" xAxis="ticks" display="immigration opinion">
       <setup></setup>
       <update>set-plot-y-range -1 1
-set-plot-x-range 0 time-steps</update>
+set-plot-x-range 1 time-steps</update>
       <pen interval="1.0" mode="0" display="mean" color="-13345367" legend="true">
         <setup></setup>
-        <update>plot mean-immigration-attitude</update>
+        <update>plot mean-immigration-opinion</update>
       </pen>
       <pen interval="1.0" mode="0" display="min" color="-2674135" legend="true">
         <setup></setup>
-        <update>plot min [xcor / 16] of users</update>
+        <update>plot min [xcor / 16] of posts</update>
       </pen>
       <pen interval="1.0" mode="0" display="max" color="-12087248" legend="true">
         <setup></setup>
-        <update>plot max [xcor / 16] of users</update>
+        <update>plot max [xcor / 16] of posts</update>
       </pen>
       <pen interval="1.0" mode="0" display="sd-upper" color="-11033397" legend="true">
         <setup></setup>
-        <update>plot mean-immigration-attitude + sd-immigration-attitude</update>
+        <update>plot mean-immigration-opinion + sd-immigration-opinion</update>
       </pen>
       <pen interval="1.0" mode="0" display="sd-lower" color="-11033397" legend="true">
         <setup></setup>
-        <update>plot mean-immigration-attitude - sd-immigration-attitude</update>
+        <update>plot mean-immigration-opinion - sd-immigration-opinion</update>
       </pen>
       <pen interval="1.0" mode="0" display="median" color="-817084" legend="true">
         <setup></setup>
-        <update>plot median [xcor / 16] of users</update>
+        <update>plot median [xcor / 16] of posts</update>
       </pen>
     </plot>
     <slider x="9" step="0.1" y="612" max="4" width="241" display="content-noise" height="50" min="0" direction="Horizontal" default="0.5" variable="content-noise"></slider>
-    <slider x="169" step="1" y="92" max="1000" width="150" display="num-target-users" height="50" min="0" direction="Horizontal" default="10.0" variable="num-target-users"></slider>
+    <slider x="169" step="1" y="92" max="numusers" width="150" display="num-target-users" height="50" min="0" direction="Horizontal" default="10.0" variable="num-target-users"></slider>
+    <switch x="1110" y="41" height="40" on="false" variable="show-users" width="258" display="show-users"></switch>
+    <switch x="1110" y="84" height="40" on="false" variable="show-strategists" width="258" display="show-strategists"></switch>
+    <switch x="1111" y="128" height="40" on="false" variable="show-posts" width="137" display="show-posts"></switch>
+    <switch x="1111" y="172" height="40" on="false" variable="show-infolinks" width="258" display="show-infolinks"></switch>
+    <switch x="1250" y="128" height="40" on="false" variable="post-size" width="118" display="post-size"></switch>
+    <switch x="1111" y="260" height="40" on="false" variable="show-user-links" width="260" display="show-user-links"></switch>
+    <switch x="1111" y="216" height="40" on="false" variable="show-strategist-links" width="259" display="show-strategist-links"></switch>
+    <chooser x="1111" y="304" height="60" variable="patch-color" current="0" width="262" display="patch-color">
+      <choice type="string" value="white"></choice>
+      <choice type="string" value="frequency posts"></choice>
+      <choice type="string" value="frequency users"></choice>
+    </chooser>
+    <slider x="1112" step="0.001" y="372" max="0.05" width="233" display="color-axis-max" height="50" min="0.001" direction="Horizontal" default="0.05" variable="color-axis-max"></slider>
+    <slider x="1113" step="1" y="429" max="200" width="177" display="update-plot-every" height="50" min="1" direction="Horizontal" default="1.0" variable="update-plot-every"></slider>
+    <input x="11" multiline="false" y="213" height="60" variable="time-steps" type="number" width="151">1000.0</input>
+    <note x="1025" y="35" backgroundDark="0" fontSize="12" width="33" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+</note>
+    <note x="1024" y="448" backgroundDark="0" fontSize="12" width="26" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-</note>
+    <note x="997" y="472" backgroundDark="0" fontSize="12" width="28" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">+</note>
+    <note x="587" y="472" backgroundDark="0" fontSize="12" width="27" markdown="false" height="21" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">-</note>
+    <switch x="158" y="149" height="40" on="true" variable="boost-quality-sources?" width="160" display="boost-quality-sources?"></switch>
+    <chooser x="11" y="147" height="60" variable="network-type" current="1" width="136" display="network-type">
+      <choice type="string" value="forum"></choice>
+      <choice type="string" value="microblog"></choice>
+    </chooser>
   </widgets>
   <info># WHAT-IF Model
 
@@ -1358,6 +1439,93 @@ The world represents a square two-dimensional *attitude space* with the origin (
           <value value="&quot;individual&quot;"></value>
           <value value="&quot;close posts&quot;"></value>
           <value value="&quot;distant posts&quot;"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="experiment_boost_quality" repetitions="100" sequentialRunOrder="true" runMetricsEveryStep="true" timeLimit="1000">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>experiment-seed</metric>
+        <metric>mean-post-quality</metric>
+        <metric>sd-post-quality</metric>
+        <metric>mean-immigration-attitude</metric>
+        <metric>sd-immigration-attitude</metric>
+        <metric>mean-immigration-opinion</metric>
+        <metric>sd-immigration-opinion</metric>
+        <metric>mean-climate-attitude</metric>
+        <metric>mean-climate-opinion</metric>
+        <metric>sd-climate-attitude</metric>
+        <metric>sd-climate-opinion</metric>
+        <metric>mean [civility] of posts</metric>
+        <metric>standard-deviation [civility] of posts</metric>
+        <metric><![CDATA[count users with [abs xcor > 0.8]]]></metric>
+        <metric><![CDATA[count users with [abs ycor > 0.8]]]></metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="acceptance-sharpness">
+          <value value="20"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="boost-quality-sources?">
+          <value value="false"></value>
+          <value value="true"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="numusers">
+          <value value="1000"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="memory">
+          <value value="20"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="numstrategists">
+          <value value="20"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="color-axis-max">
+          <value value="0.05"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="time-steps">
+          <value value="1000"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="patch-color">
+          <value value="&quot;white&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="show-infolinks">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="network-type">
+          <value value="&quot;microblog&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="acceptance-latitude">
+          <value value="0.2"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="post-size">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="show-strategists">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="update-plot-every">
+          <value value="1"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="content-noise">
+          <value value="0.5"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="show-posts">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="num-target-users">
+          <value value="10"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="show-users">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="show-strategist-links">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="show-user-links">
+          <value value="false"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="new-posts-mode">
+          <value value="&quot;individual&quot;"></value>
         </enumeratedValueSet>
       </constants>
     </experiment>
